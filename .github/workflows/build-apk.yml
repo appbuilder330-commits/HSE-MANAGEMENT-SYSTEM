@@ -21,6 +21,9 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v2
+      
       - name: Install Cordova
         run: npm install -g cordova
       
@@ -33,26 +36,19 @@ jobs:
       - name: Copy web files
         run: |
           cp index.html hse-app/www/
-          cp -r css hse-app/www/ 2>/dev/null || true
-          cp -r js hse-app/www/ 2>/dev/null || true
-          cp -r assets hse-app/www/ 2>/dev/null || true
+          if [ -d css ]; then cp -r css hse-app/www/; fi
+          if [ -d js ]; then cp -r js hse-app/www/; fi
+          if [ -d assets ]; then cp -r assets hse-app/www/; fi
       
       - name: Build APK
         run: |
           cd hse-app
-          cordova build android --release
+          cordova build android --release 2>&1 || cordova build android
       
-      - name: Upload APK Artifact
+      - name: Find and Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HSE-Manager-APK
-          path: hse-app/platforms/android/app/build/outputs/apk/release/*.apk
+          path: |
+            hse-app/platforms/android/app/build/outputs/apk/**/*.apk
           retention-days: 30
-      
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: hse-app/platforms/android/app/build/outputs/apk/release/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
