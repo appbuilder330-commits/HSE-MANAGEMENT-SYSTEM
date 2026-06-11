@@ -13,15 +13,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install NSIS
         run: choco install nsis -y
-      - name: Wait for NSIS installation
-        run: Start-Sleep -Seconds 5
+      - name: Verify NSIS Installation
+        run: |
+          Get-ChildItem "C:\Program Files (x86)\NSIS" -ErrorAction SilentlyContinue
+          Get-ChildItem "C:\Program Files\NSIS" -ErrorAction SilentlyContinue
       - name: Build installer
         run: |
-          $nsisPath = Get-Command makensis -ErrorAction SilentlyContinue
-          if ($nsisPath) {
-            makensis installer/setup.nsi
+          $nsisPaths = @(
+            "C:\Program Files (x86)\NSIS\makensis.exe",
+            "C:\Program Files\NSIS\makensis.exe"
+          )
+          $nsisExe = $null
+          foreach ($path in $nsisPaths) {
+            if (Test-Path $path) {
+              $nsisExe = $path
+              break
+            }
+          }
+          if ($nsisExe) {
+            & $nsisExe installer/setup.nsi
           } else {
-            & "C:\Program Files\NSIS\makensis.exe" installer/setup.nsi
+            Write-Error "makensis.exe not found in any expected location"
+            exit 1
           }
       - name: Upload EXE to GitHub Release
         uses: softprops/action-gh-release@v2
