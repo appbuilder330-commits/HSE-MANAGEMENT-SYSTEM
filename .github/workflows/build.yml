@@ -7,22 +7,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Install NSIS
         run: choco install nsis -y
-jobs:
-  build:
-    runs-on: windows-latest  # Make sure you're using Windows
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install NSIS         
-        run: choco install nsis 
-      - name: Build installer      
-        run: makensis installer/setup.nsi
       - name: Build installer
         run: makensis installer/setup.nsi
       - name: Upload EXE to GitHub Release
