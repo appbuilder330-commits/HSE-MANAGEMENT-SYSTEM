@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build APK - Direct
 
 on:
   push:
@@ -10,60 +10,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Java 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-      
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          api-level: 30
-          build-tools-version: 30.0.3
-      
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
       
-      - name: Install Cordova
-        run: npm install -g cordova@11
-      
-      - name: Create Cordova Project
+      - name: Install React Native CLI & dependencies
         run: |
-          cordova create hseapp com.example.hsemanager HSEManager
+          npm install -g eas-cli
+          npm install -g expo-cli
       
-      - name: Add Android Platform
+      - name: Create Web APK wrapper
         run: |
-          cd hseapp
-          cordova platform add android@11
+          mkdir -p apk_project
+          cd apk_project
+          npm init -y
+          npm install capacitor @capacitor/core @capacitor/android
+          npx cap init HSE Manager com.hsemanager.app
       
-      - name: Copy Web Files
+      - name: Copy HTML files
         run: |
-          cd hseapp/www
-          rm -rf *
-          cd ../../
-          cp index.html hseapp/www/ 2>/dev/null || echo "index.html not found"
-          cp -r css hseapp/www/ 2>/dev/null || true
-          cp -r js hseapp/www/ 2>/dev/null || true
-          ls -la hseapp/www/
+          cp index.html apk_project/www/ 2>/dev/null || echo "<html><body>HSE Manager</body></html>" > apk_project/www/index.html
+          cp -r css apk_project/www/ 2>/dev/null || true
+          cp -r js apk_project/www/ 2>/dev/null || true
       
-      - name: Build APK Debug
+      - name: Add Android
         run: |
-          cd hseapp
-          cordova build android --debug
+          cd apk_project
+          npx cap add android
+      
+      - name: Build APK
+        run: |
+          cd apk_project/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
       
       - name: Find APK
-        run: |
-          find hseapp -name "*.apk" -type f
-          echo "---"
-          ls -lah hseapp/platforms/android/app/build/outputs/apk/debug/
+        run: find apk_project -name "*.apk" -type f
       
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
-        if: success()
         with:
-          name: HSE-Manager-APK
-          path: hseapp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          name: HSE-Manager.apk
+          path: |
+            apk_project/android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
