@@ -13,12 +13,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install NSIS
         run: choco install nsis -y
-      - name: List files to debug
-        run: |
-          Write-Host "Current directory:"
-          Get-Location
-          Write-Host "Files in repo:"
-          Get-ChildItem -Recurse
       - name: Build installer
         run: |
           $nsisPaths = @(
@@ -33,26 +27,20 @@ jobs:
             }
           }
           if ($nsisExe) {
-            Write-Host "Found NSIS at: $nsisExe"
-            Write-Host "Building from: $(Get-Location)\installer\setup.nsi"
             & $nsisExe "$(Get-Location)\installer\setup.nsi"
           } else {
-            Write-Error "makensis.exe not found in any expected location"
+            Write-Error "makensis.exe not found"
             exit 1
           }
-      - name: Check if EXE was created
-        run: |
-          if (Test-Path "installer/HSE-Manager-Setup.exe") {
-            Write-Host "EXE created successfully!"
-            Get-Item "installer/HSE-Manager-Setup.exe"
-          } else {
-            Write-Error "EXE not found at installer/HSE-Manager-Setup.exe"
-            exit 1
-          }
-      - name: Upload EXE to GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload EXE Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: installer/HSE-Manager-Setup.exe
+          name: installer-artifacts
+          path: HSE-Manager-Setup.exe
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: HSE-Manager-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
