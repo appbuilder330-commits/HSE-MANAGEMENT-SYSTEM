@@ -10,55 +10,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Java 17
+      - name: Set up Java 11
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
+          java-version: '11'
           distribution: 'temurin'
+      
+      - name: Install Android SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y android-sdk
       
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '16'
       
-      - name: Install Cordova CLI
-        run: npm install -g cordova@12
+      - name: Install Cordova
+        run: npm install -g cordova@11
       
-      - name: Create Cordova App
+      - name: Create Cordova Project
         run: |
-          cordova create HSEApp com.hsemanager.app "HSE Manager"
-          cd HSEApp
-          cordova platform add android@latest
-          cd ..
+          cordova create hseapp com.example.hsemanager "HSE Manager"
       
-      - name: Copy Web Assets
+      - name: Add Android Platform
         run: |
-          mkdir -p HSEApp/www/css HSEApp/www/js
-          if [ -f index.html ]; then cp index.html HSEApp/www/; fi
-          if [ -f style.css ] || [ -d css ]; then cp -r css/* HSEApp/www/css/ 2>/dev/null || cp style.css HSEApp/www/css/ 2>/dev/null || true; fi
-          if [ -f app.js ] || [ -d js ]; then cp -r js/* HSEApp/www/js/ 2>/dev/null || cp app.js HSEApp/www/js/ 2>/dev/null || true; fi
+          cd hseapp
+          cordova platform add android
       
-      - name: Build Release APK
+      - name: Copy Web Files
         run: |
-          cd HSEApp
-          cordova build android --release
+          cd hseapp/www
+          rm -rf *
+          cd ../../
+          cp index.html hseapp/www/ 2>/dev/null || echo "index.html not found"
+          cp -r css hseapp/www/ 2>/dev/null || echo "css folder not found"
+          cp -r js hseapp/www/ 2>/dev/null || echo "js folder not found"
+          echo "Web files copied"
       
-      - name: Find APK File
+      - name: Build APK Debug
         run: |
-          find HSEApp -name "*.apk" -type f
-          ls -lah HSEApp/platforms/android/app/build/outputs/apk/release/
+          cd hseapp
+          cordova build android --debug
       
-      - name: Upload APK Artifact
+      - name: List APK files
+        run: find hseapp -name "*.apk" -type f
+      
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HSE-Manager-APK
-          path: HSEApp/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: hseapp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: HSEApp/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
