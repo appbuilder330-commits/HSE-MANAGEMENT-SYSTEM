@@ -16,10 +16,11 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       
-      - name: Install Android SDK
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y android-sdk
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 30
+          build-tools-version: 30.0.3
       
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -31,12 +32,12 @@ jobs:
       
       - name: Create Cordova Project
         run: |
-          cordova create hseapp com.example.hsemanager "HSE Manager"
+          cordova create hseapp com.example.hsemanager HSEManager
       
       - name: Add Android Platform
         run: |
           cd hseapp
-          cordova platform add android
+          cordova platform add android@11
       
       - name: Copy Web Files
         run: |
@@ -44,20 +45,24 @@ jobs:
           rm -rf *
           cd ../../
           cp index.html hseapp/www/ 2>/dev/null || echo "index.html not found"
-          cp -r css hseapp/www/ 2>/dev/null || echo "css folder not found"
-          cp -r js hseapp/www/ 2>/dev/null || echo "js folder not found"
-          echo "Web files copied"
+          cp -r css hseapp/www/ 2>/dev/null || true
+          cp -r js hseapp/www/ 2>/dev/null || true
+          ls -la hseapp/www/
       
       - name: Build APK Debug
         run: |
           cd hseapp
           cordova build android --debug
       
-      - name: List APK files
-        run: find hseapp -name "*.apk" -type f
+      - name: Find APK
+        run: |
+          find hseapp -name "*.apk" -type f
+          echo "---"
+          ls -lah hseapp/platforms/android/app/build/outputs/apk/debug/
       
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: HSE-Manager-APK
           path: hseapp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
