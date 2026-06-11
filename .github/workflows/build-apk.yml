@@ -10,45 +10,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
       
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
+      - name: Install Cordova CLI
+        run: npm install -g cordova@12
       
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v2
-      
-      - name: Install Cordova
-        run: npm install -g cordova
-      
-      - name: Create Cordova project
+      - name: Create Cordova App
         run: |
-          cordova create hse-app com.example.hsemanager "HSE Manager"
-          cd hse-app
-          cordova platform add android
+          cordova create HSEApp com.hsemanager.app "HSE Manager"
+          cd HSEApp
+          cordova platform add android@latest
+          cd ..
       
-      - name: Copy web files
+      - name: Copy Web Assets
         run: |
-          cp index.html hse-app/www/
-          if [ -d css ]; then cp -r css hse-app/www/; fi
-          if [ -d js ]; then cp -r js hse-app/www/; fi
-          if [ -d assets ]; then cp -r assets hse-app/www/; fi
+          mkdir -p HSEApp/www/css HSEApp/www/js
+          if [ -f index.html ]; then cp index.html HSEApp/www/; fi
+          if [ -f style.css ] || [ -d css ]; then cp -r css/* HSEApp/www/css/ 2>/dev/null || cp style.css HSEApp/www/css/ 2>/dev/null || true; fi
+          if [ -f app.js ] || [ -d js ]; then cp -r js/* HSEApp/www/js/ 2>/dev/null || cp app.js HSEApp/www/js/ 2>/dev/null || true; fi
       
-      - name: Build APK
+      - name: Build Release APK
         run: |
-          cd hse-app
-          cordova build android --release 2>&1 || cordova build android
+          cd HSEApp
+          cordova build android --release
       
-      - name: Find and Upload APK
+      - name: Find APK File
+        run: |
+          find HSEApp -name "*.apk" -type f
+          ls -lah HSEApp/platforms/android/app/build/outputs/apk/release/
+      
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: HSE-Manager-APK
-          path: |
-            hse-app/platforms/android/app/build/outputs/apk/**/*.apk
+          path: HSEApp/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 30
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: HSEApp/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
