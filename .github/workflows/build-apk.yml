@@ -1,0 +1,58 @@
+name: Build Android APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      
+      - name: Install Cordova
+        run: npm install -g cordova
+      
+      - name: Create Cordova project
+        run: |
+          cordova create hse-app com.example.hsemanager "HSE Manager"
+          cd hse-app
+          cordova platform add android
+      
+      - name: Copy web files
+        run: |
+          cp index.html hse-app/www/
+          cp -r css hse-app/www/ 2>/dev/null || true
+          cp -r js hse-app/www/ 2>/dev/null || true
+          cp -r assets hse-app/www/ 2>/dev/null || true
+      
+      - name: Build APK
+        run: |
+          cd hse-app
+          cordova build android --release
+      
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HSE-Manager-APK
+          path: hse-app/platforms/android/app/build/outputs/apk/release/*.apk
+          retention-days: 30
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: hse-app/platforms/android/app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
